@@ -45,20 +45,92 @@ const obj = {
 	lowest: 0,
 };
 
-// Function to set the value for a given voxel and its neighbors
-const setVoxelAndNeighbors = (x, y, z, value) => {
-	for (let i = -Math.trunc(curveWidth / 2); i <= Math.trunc(curveWidth / 2); i++) {
-		for (let j = -Math.trunc(curveWidth / 2); j <= Math.trunc(curveWidth / 2); j++) {
-			for (let k = -Math.trunc(curveWidth / 2); k <= Math.trunc(curveWidth / 2); k++) {
-				const newX = x + i;
-				const newY = y + j;
-				const newZ = z + k;
+let currentMax = Infinity;
+let objForNeighbours;
 
-				// Check if the new coordinates are within the dimensions of volumetricDataset
-				if (newX >= 0 && newX < width && newY >= 0 && newY < height && newZ >= 0 && newZ < depth) {
-					volumetricDataset[newX][newY][newZ] = value;
+// Function to set the value for a given voxel and its neighbors
+const setVoxelAndNeighbors = (x, y, z, value, count, max) => {
+	// seperate voxels sizes (for which part of the curve the voxel should have what width)
+
+	// const halfwayPoint = max / 2;
+
+	// // Calculate the width factor based on the count and halfway point
+	// const distanceFromHalfway = Math.abs(count - halfwayPoint);
+	// const widthFactor = 1 + Math.floor(distanceFromHalfway / (halfwayPoint / curveWidth));
+
+	// object for setingNeighbors
+	let half;
+
+	if (currentMax !== max) {
+		objForNeighbours = {};
+
+		const total = max;
+		// console.log("total", total);
+		let max_width = curveWidth;
+
+		half = Math.floor(total / 2);
+
+		let divisor = Math.floor(half / max_width);
+
+		let newHalf = half;
+		let currentWidth = max_width;
+
+		for (let i = max_width; i > 0; i--) {
+			newHalf = newHalf - divisorl;
+			objForNeighbours[newHalf] = currentWidth;
+			currentWidth = currentWidth - 1;
+		}
+		currentWidth = max_width;
+		newHalf = half;
+
+		for (let i = max_width; i > 0; i--) {
+			newHalf = newHalf + divisor;
+			objForNeighbours[newHalf] = currentWidth;
+			currentWidth = currentWidth - 1;
+		}
+		currentMax = max;
+		// console.log("obj", objForNeighbours);
+
+		// console.log("count", count, result);
+	}
+
+	const keys = Object.keys(objForNeighbours).map(Number); // Convert keys to numbers
+	const sortedKeys = keys.sort((a, b) => a - b); // Sort keys in ascending order
+
+	let result;
+
+	for (let i = 0; i < sortedKeys.length - 1; i++) {
+		const key1 = sortedKeys[i];
+		const key2 = sortedKeys[i + 1];
+
+		if (count >= key1 && count <= key2) {
+			if (count < half) {
+				result = objForNeighbours[key1];
+			} else {
+				result = objForNeighbours[key2];
+			}
+			break;
+		}
+	}
+
+	if (result !== 1) {
+		for (let i = -Math.trunc(result / 2); i <= Math.trunc(result / 2); i++) {
+			for (let j = -Math.trunc(result / 2); j <= Math.trunc(result / 2); j++) {
+				for (let k = -Math.trunc(result / 2); k <= Math.trunc(result / 2); k++) {
+					const newX = x + i;
+					const newY = y + j;
+					const newZ = z + k;
+
+					// Check if the new coordinates are within the dimensions of volumetricDataset
+					if (newX >= 0 && newX < width && newY >= 0 && newY < height && newZ >= 0 && newZ < depth) {
+						volumetricDataset[newX][newY][newZ] = value;
+					}
 				}
 			}
+		}
+	} else {
+		if (x >= 0 && x < width && y >= 0 && y < height && z >= 0 && z < depth) {
+			volumetricDataset[x][y][z] = value;
 		}
 	}
 };
@@ -102,7 +174,7 @@ for (let i = 0; i < threeDimArr[0].length; i++) {
 		if (valueToSet === highestValue) {
 			// To have the highest value of bigger width
 			// This might be changed if every values must have the same width
-			setVoxelAndNeighbors(x, y, z, valueToSet);
+			setVoxelAndNeighbors(x, y, z, valueToSet, count, initial_max);
 		} else {
 			volumetricDataset[x][y][z] = valueToSet;
 		}
