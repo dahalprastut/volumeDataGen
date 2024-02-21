@@ -37,6 +37,7 @@ const volumetricDataset = new Array(width)
 let count = 0;
 let j = 0;
 let initial_max = num_field[j];
+let dataUsed = 0;
 
 // for counting
 const obj = {
@@ -48,91 +49,111 @@ const obj = {
 let currentMax = Infinity;
 let objForNeighbours;
 
+// Function to calculate Gaussian function
+function gaussianFunction(x, y, z, meanX, meanY, meanZ, standardDeviation) {
+	const exponent = -(
+		(x - meanX) ** 2 / (2 * standardDeviation ** 2) +
+		(y - meanY) ** 2 / (2 * standardDeviation ** 2) +
+		(z - meanZ) ** 2 / (2 * standardDeviation ** 2)
+	);
+	return Math.exp(exponent);
+}
+
 // Function to set the value for a given voxel and its neighbors
 const setVoxelAndNeighbors = (x, y, z, value, count, max) => {
-	// seperate voxels sizes (for which part of the curve the voxel should have what width)
-
-	// const halfwayPoint = max / 2;
-
-	// // Calculate the width factor based on the count and halfway point
-	// const distanceFromHalfway = Math.abs(count - halfwayPoint);
-	// const widthFactor = 1 + Math.floor(distanceFromHalfway / (halfwayPoint / curveWidth));
-
-	// object for setingNeighbors
 	let half;
-
+	// I think the logic behind this is wrong
+	// I am getting all the points from outside (x,y and z)
+	// I need to calculate the mean first suppose x = 2100, I need to find the total length of this curve and if the total lengh is 2000
+	// I need to see the currentPos + 2000 and see the last x value and calculate the mean
+	// and based on this mean I have to set the width for each point
+	// But why do I have to look at x? why not y or z for that matter?
+	// or can I just look at the total number of points the curve has and see the mean based on the count
+	//  but that way, in the formula my i(or x) will always be from 0 to total_length of the curve
+	// maybe I need to uderstand the formula first of how width can be defined from the formula.
 	if (currentMax !== max) {
 		objForNeighbours = {};
 
-		const total = max;
-		// console.log("total", total);
-		let max_width = curveWidth;
+		// Calculate the mean (halfway point)
 
-		half = Math.floor(total / 2);
+		// Calculate standard deviation factor
+		const standardDeviation = 1; // Adjust as needed
 
-		let divisor = Math.floor(half / max_width);
+		// object for setting Neighbors
+		half = Math.floor(max / 2);
+		const meanX = threeDimArr[0][dataUsed + half];
+		const meanY = threeDimArr[2][dataUsed + half];
+		const meanZ = threeDimArr[1][dataUsed + half];
+		// Why am i doing this for every point? why am i applying loop for every point as points are selectedd from outside
+		for (let i = 0; i < max; i++) {
+			// Calculate Gaussian function for each position
+			const valueAtX = threeDimArr[0][i];
+			const valueAtY = threeDimArr[2][i];
+			const valueAtZ = threeDimArr[1][i];
+			// Calculate distance from the center of the curve
+			// const distance = Math.sqrt((valueAtX - meanX) ** 2 + (valueAtY - meanY) ** 2 + (valueAtZ - meanZ) ** 2);
+			// console.log("di", distance)
+			const gaussianValue = gaussianFunction(
+				valueAtX,
+				valueAtY,
+				valueAtZ,
+				meanX,
+				meanY,
+				meanZ,
+				standardDeviation
+			);
+			// console.log("ga", gaussianValue);
+			// // f(x)=e ^ -((x - mean)^2/2.sd^2)
+			// const gaussianValue = Math.exp(-(Math.pow(i - half, 2) / (2 * Math.pow(standardDeviation * half, 2))));
 
-		let newHalf = half;
-		let currentWidth = max_width;
+			// Determine width based on the Gaussian value
+			const widthFactor = Math.floor(gaussianValue * curveWidth);
 
-		for (let i = max_width; i > 0; i--) {
-			newHalf = newHalf - divisorl;
-			objForNeighbours[newHalf] = currentWidth;
-			currentWidth = currentWidth - 1;
+			// Store in the object
+			objForNeighbours[i] = widthFactor;
 		}
-		currentWidth = max_width;
-		newHalf = half;
-
-		for (let i = max_width; i > 0; i--) {
-			newHalf = newHalf + divisor;
-			objForNeighbours[newHalf] = currentWidth;
-			currentWidth = currentWidth - 1;
-		}
+		dataUsed = dataUsed + max;
 		currentMax = max;
-		// console.log("obj", objForNeighbours);
-
-		// console.log("count", count, result);
 	}
+	// console.log("obj", objForNeighbours);
 
-	const keys = Object.keys(objForNeighbours).map(Number); // Convert keys to numbers
-	const sortedKeys = keys.sort((a, b) => a - b); // Sort keys in ascending order
+	const result = Object.entries(objForNeighbours).filter(([key, val]) => key == count)[0][1];
 
-	let result;
+	for (let i = -result; i <= result; i++) {
+		for (let j = -result; j <= result; j++) {
+			for (let k = -result; k <= result; k++) {
+				const newX = x + i;
+				const newY = y + j;
+				const newZ = z + k;
 
-	for (let i = 0; i < sortedKeys.length - 1; i++) {
-		const key1 = sortedKeys[i];
-		const key2 = sortedKeys[i + 1];
-
-		if (count >= key1 && count <= key2) {
-			if (count < half) {
-				result = objForNeighbours[key1];
-			} else {
-				result = objForNeighbours[key2];
-			}
-			break;
-		}
-	}
-
-	if (result !== 1) {
-		for (let i = -Math.trunc(result / 2); i <= Math.trunc(result / 2); i++) {
-			for (let j = -Math.trunc(result / 2); j <= Math.trunc(result / 2); j++) {
-				for (let k = -Math.trunc(result / 2); k <= Math.trunc(result / 2); k++) {
-					const newX = x + i;
-					const newY = y + j;
-					const newZ = z + k;
-
-					// Check if the new coordinates are within the dimensions of volumetricDataset
-					if (newX >= 0 && newX < width && newY >= 0 && newY < height && newZ >= 0 && newZ < depth) {
-						volumetricDataset[newX][newY][newZ] = value;
-					}
+				// Check if the new coordinates are within the dimensions of volumetricDataset
+				if (newX >= 0 && newX < width && newY >= 0 && newY < height && newZ >= 0 && newZ < depth) {
+					volumetricDataset[newX][newY][newZ] = value;
 				}
 			}
 		}
-	} else {
-		if (x >= 0 && x < width && y >= 0 && y < height && z >= 0 && z < depth) {
-			volumetricDataset[x][y][z] = value;
-		}
 	}
+
+	// if (result !== 1) {
+	// 	for (let i = -Math.trunc(result / 2); i <= Math.trunc(result / 2); i++) {
+	// 		for (let j = -Math.trunc(result / 2); j <= Math.trunc(result / 2); j++) {
+	// 			for (let k = -Math.trunc(result / 2); k <= Math.trunc(result / 2); k++) {
+	// 				const newX = x + i;
+	// 				const newY = y + j;
+	// 				const newZ = z + k;
+
+	// 				// Check if the new coordinates are within the dimensions of volumetricDataset
+	// 				if (newX >= 0 && newX < width && newY >= 0 && newY < height && newZ >= 0 && newZ < depth) {
+	// 					volumetricDataset[newX][newY][newZ] = value;
+	// 				}
+	// 			}
+	// 		}
+	// 	}
+	// } else {
+	// 	if (x >= 0 && x < width && y >= 0 && y < height && z >= 0 && z < depth) {
+	// 		volumetricDataset[x][y][z] = value;
+	// 	}
+	// }
 };
 
 for (let i = 0; i < threeDimArr[0].length; i++) {
