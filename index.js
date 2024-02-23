@@ -15,20 +15,20 @@ const height = 256;
 const width = 256;
 const depth = 256;
 
-const curveWidth = 5;
+const curveWidth = 10;
 
 const filteredNums = num_field.filter((num) => num !== 0);
 
 // Find the highest, lowest (excluding 0), and middle values
 // This is done to set a limit to what might be the highest, lowest and middle values
 // const highest = Math.max(...filteredNums);
-const highest = filteredNums.sort((a, b) => a - b)[filteredNums.length - 28];
-// const highest = filteredNums.sort((a, b) => a - b)[filteredNums.length - 1];
+// const highest = filteredNums.sort((a, b) => a - b)[filteredNums.length - 28];
+const highest = filteredNums.sort((a, b) => a - b)[filteredNums.length - 1];
 
 // const lowest = Math.min(...filteredNums);
 const lowest = filteredNums.sort((a, b) => a - b)[10];
-const middle = filteredNums.sort((a, b) => a - b)[Math.floor(filteredNums.length / 2) - 10];
-// const middle = filteredNums.sort((a, b) => a - b)[Math.floor(filteredNums.length) - 2];
+// const middle = filteredNums.sort((a, b) => a - b)[Math.floor(filteredNums.length / 2) - 10];
+const middle = filteredNums.sort((a, b) => a - b)[Math.floor(filteredNums.length) - 2];
 
 const volumetricDataset = new Array(width)
 	.fill(0)
@@ -37,7 +37,6 @@ const volumetricDataset = new Array(width)
 let count = 0;
 let j = 0;
 let initial_max = num_field[j];
-let dataUsed = 0;
 
 // for counting
 const obj = {
@@ -48,16 +47,44 @@ const obj = {
 
 let currentMax = Infinity;
 let objForNeighbours;
+let scaledThicknessArr = [];
+const findingGaussianArray = (max) => {
+	scaledThicknessArr = [];
+	const start = -2;
+	const end = 2;
+	const mean = 0;
+	const totalNumberOfPoints = max;
+	const thicknessArr = [];
+	const standardDeviation = 1;
 
-// Function to calculate Gaussian function
-function gaussianFunction(x, y, z, meanX, meanY, meanZ, standardDeviation) {
-	const exponent = -(
-		(x - meanX) ** 2 / (2 * standardDeviation ** 2) +
-		(y - meanY) ** 2 / (2 * standardDeviation ** 2) +
-		(z - meanZ) ** 2 / (2 * standardDeviation ** 2)
-	);
-	return Math.exp(exponent);
-}
+	let xval = start;
+
+	const step = (end - start) / totalNumberOfPoints;
+
+	for (let i = 0; i <= totalNumberOfPoints; i++) {
+		// const coefficient = 1 / (standardDeviation * Math.sqrt(2 * Math.PI));
+		// const exponent = -((xval - mean) ** 2) / (2 * standardDeviation ** 2);
+		const thicknessValue =
+			(1 / (standardDeviation * Math.sqrt(2 * Math.PI))) *
+			Math.exp(-((xval - mean) ** 2) / (2 * standardDeviation ** 2));
+		thicknessArr.push(thicknessValue);
+		xval += step;
+	}
+
+	const maxThickness = Math.max(...thicknessArr);
+	// Scale the thickness values based on the maximum thickness
+	const scalingFactor = curveWidth / maxThickness;
+
+	scaledThicknessArr = thicknessArr.map((value) => Math.ceil(value * scalingFactor));
+	return scaledThicknessArr;
+};
+
+const resultArray = findingGaussianArray(num_field[0]);
+
+// Convert the array to a comma-separated string
+const resultString = resultArray.join("\n");
+
+fs.writeFileSync("output.txt", resultString);
 
 // Function to set the value for a given voxel and its neighbors
 const setVoxelAndNeighbors = (x, y, z, value, count, max) => {
@@ -71,54 +98,63 @@ const setVoxelAndNeighbors = (x, y, z, value, count, max) => {
 	// or can I just look at the total number of points the curve has and see the mean based on the count
 	//  but that way, in the formula my i(or x) will always be from 0 to total_length of the curve
 	// maybe I need to uderstand the formula first of how width can be defined from the formula.
-	if (currentMax !== max) {
-		objForNeighbours = {};
 
-		// Calculate the mean (halfway point)
+	// =================================
+	// if (currentMax !== max) {
+	// 	objForNeighbours = {};
 
-		// Calculate standard deviation factor
-		const standardDeviation = 1; // Adjust as needed
+	// 	// Calculate the mean (halfway point)
 
-		// object for setting Neighbors
-		half = Math.floor(max / 2);
-		const meanX = threeDimArr[0][dataUsed + half];
-		const meanY = threeDimArr[2][dataUsed + half];
-		const meanZ = threeDimArr[1][dataUsed + half];
-		// Why am i doing this for every point? why am i applying loop for every point as points are selectedd from outside
-		for (let i = 0; i < max; i++) {
-			// Calculate Gaussian function for each position
-			const valueAtX = threeDimArr[0][i];
-			const valueAtY = threeDimArr[2][i];
-			const valueAtZ = threeDimArr[1][i];
-			// Calculate distance from the center of the curve
-			// const distance = Math.sqrt((valueAtX - meanX) ** 2 + (valueAtY - meanY) ** 2 + (valueAtZ - meanZ) ** 2);
-			// console.log("di", distance)
-			const gaussianValue = gaussianFunction(
-				valueAtX,
-				valueAtY,
-				valueAtZ,
-				meanX,
-				meanY,
-				meanZ,
-				standardDeviation
-			);
-			// console.log("ga", gaussianValue);
-			// // f(x)=e ^ -((x - mean)^2/2.sd^2)
-			// const gaussianValue = Math.exp(-(Math.pow(i - half, 2) / (2 * Math.pow(standardDeviation * half, 2))));
+	// 	// Calculate standard deviation factor
+	// 	const standardDeviation = 1; // Adjust as needed
 
-			// Determine width based on the Gaussian value
-			const widthFactor = Math.floor(gaussianValue * curveWidth);
+	// 	// object for setting Neighbors
+	// 	half = Math.floor(max / 2);
 
-			// Store in the object
-			objForNeighbours[i] = widthFactor;
-		}
-		dataUsed = dataUsed + max;
-		currentMax = max;
-	}
+	// 	// Why am i doing this for every point? why am i applying loop for every point as points are selectedd from outside
+	// 	for (let i = 0; i < max; i++) {
+	// 		// Calculate Gaussian function for each position
+	// 		// console.log("di", distance)
+
+	// 		// console.log("ga", gaussianValue);
+	// 		// // f(x)=e ^ -((x - mean)^2/2.sd^2)
+	// 		const gaussianValue = Math.exp(
+	// 			-(Math.pow(i / max - half, 2) / (2 * Math.pow(standardDeviation * half, 2)))
+	// 		);
+
+	// 		// Determine width based on the Gaussian value
+	// 		const widthFactor = Math.floor(gaussianValue * curveWidth);
+
+	// 		// Store in the object
+	// 		objForNeighbours[i] = widthFactor;
+	// 	}
+	// 	currentMax = max;
+	// }
 	// console.log("obj", objForNeighbours);
 
-	const result = Object.entries(objForNeighbours).filter(([key, val]) => key == count)[0][1];
+	// const result = Object.entries(objForNeighbours).filter(([key, val]) => key == count)[0][1];
 
+	// for (let i = -result; i <= result; i++) {
+	// 	for (let j = -result; j <= result; j++) {
+	// 		for (let k = -result; k <= result; k++) {
+	// 			const newX = x + i;
+	// 			const newY = y + j;
+	// 			const newZ = z + k;
+
+	// 			// Check if the new coordinates are within the dimensions of volumetricDataset
+	// 			if (newX >= 0 && newX < width && newY >= 0 && newY < height && newZ >= 0 && newZ < depth) {
+	// 				volumetricDataset[newX][newY][newZ] = value;
+	// 			}
+	// 		}
+	// 	}
+	// }
+
+	// =====================
+
+	// console.log("count", count, scaledThicknessArr);
+	const result = scaledThicknessArr[count];
+
+	// if (result !== 1) {
 	for (let i = -result; i <= result; i++) {
 		for (let j = -result; j <= result; j++) {
 			for (let k = -result; k <= result; k++) {
@@ -133,28 +169,17 @@ const setVoxelAndNeighbors = (x, y, z, value, count, max) => {
 			}
 		}
 	}
-
-	// if (result !== 1) {
-	// 	for (let i = -Math.trunc(result / 2); i <= Math.trunc(result / 2); i++) {
-	// 		for (let j = -Math.trunc(result / 2); j <= Math.trunc(result / 2); j++) {
-	// 			for (let k = -Math.trunc(result / 2); k <= Math.trunc(result / 2); k++) {
-	// 				const newX = x + i;
-	// 				const newY = y + j;
-	// 				const newZ = z + k;
-
-	// 				// Check if the new coordinates are within the dimensions of volumetricDataset
-	// 				if (newX >= 0 && newX < width && newY >= 0 && newY < height && newZ >= 0 && newZ < depth) {
-	// 					volumetricDataset[newX][newY][newZ] = value;
-	// 				}
-	// 			}
-	// 		}
-	// 	}
-	// } else {
+	// }
+	// else {
 	// 	if (x >= 0 && x < width && y >= 0 && y < height && z >= 0 && z < depth) {
 	// 		volumetricDataset[x][y][z] = value;
 	// 	}
 	// }
+
+	// console.log("sca", scaledThicknessArr);
 };
+
+findingGaussianArray(num_field[j]);
 
 for (let i = 0; i < threeDimArr[0].length; i++) {
 	const x = Math.round(threeDimArr[0][i]);
@@ -178,6 +203,7 @@ for (let i = 0; i < threeDimArr[0].length; i++) {
 		j = j + 1;
 		initial_max = num_field[j];
 		count = 0;
+		findingGaussianArray(num_field[j]);
 	}
 
 	if (diffToHighest < diffToMidd && diffToHighest < diffToLowest) {
