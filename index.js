@@ -1,19 +1,19 @@
 const fs = require("fs");
 
 // Read the JSON file
-const jsonData = fs.readFileSync("field_lines_new.json", "utf-8");
+const jsonData = fs.readFileSync("field_lines4.json", "utf-8");
 
 // Parse the JSON data
 const threeDimArr = JSON.parse(jsonData);
-const highestValue = 255;
-const middleValue = 180;
-const lowestValue = 90;
+const highestValue = 511;
+const middleValue = 400;
+const lowestValue = 300;
 
 const num_field = threeDimArr[4];
 
-const height = 256;
-const width = 256;
-const depth = 256;
+const height = 512;
+const width = 512;
+const depth = 512;
 
 const curveWidth = 10;
 
@@ -23,12 +23,12 @@ const filteredNums = num_field.filter((num) => num !== 0);
 // This is done to set a limit to what might be the highest, lowest and middle values
 // const highest = Math.max(...filteredNums);
 // const highest = filteredNums.sort((a, b) => a - b)[filteredNums.length - 28];
-const highest = filteredNums.sort((a, b) => a - b)[filteredNums.length - 1];
+const highest = filteredNums.sort((a, b) => a - b)[filteredNums.length - 5];
 
 // const lowest = Math.min(...filteredNums);
 const lowest = filteredNums.sort((a, b) => a - b)[10];
 // const middle = filteredNums.sort((a, b) => a - b)[Math.floor(filteredNums.length / 2) - 10];
-const middle = filteredNums.sort((a, b) => a - b)[Math.floor(filteredNums.length) - 2];
+const middle = filteredNums.sort((a, b) => a - b)[Math.floor(filteredNums.length) - 20];
 
 const volumetricDataset = new Array(width)
 	.fill(0)
@@ -55,7 +55,7 @@ const findingGaussianArray = (max) => {
 	const mean = 0;
 	const totalNumberOfPoints = max;
 	const thicknessArr = [];
-	const standardDeviation = 1;
+	const standardDeviation = 0.5;
 
 	let xval = start;
 
@@ -89,67 +89,6 @@ fs.writeFileSync("output.txt", resultString);
 // Function to set the value for a given voxel and its neighbors
 const setVoxelAndNeighbors = (x, y, z, value, count, max) => {
 	let half;
-	// I think the logic behind this is wrong
-	// I am getting all the points from outside (x,y and z)
-	// I need to calculate the mean first suppose x = 2100, I need to find the total length of this curve and if the total lengh is 2000
-	// I need to see the currentPos + 2000 and see the last x value and calculate the mean
-	// and based on this mean I have to set the width for each point
-	// But why do I have to look at x? why not y or z for that matter?
-	// or can I just look at the total number of points the curve has and see the mean based on the count
-	//  but that way, in the formula my i(or x) will always be from 0 to total_length of the curve
-	// maybe I need to uderstand the formula first of how width can be defined from the formula.
-
-	// =================================
-	// if (currentMax !== max) {
-	// 	objForNeighbours = {};
-
-	// 	// Calculate the mean (halfway point)
-
-	// 	// Calculate standard deviation factor
-	// 	const standardDeviation = 1; // Adjust as needed
-
-	// 	// object for setting Neighbors
-	// 	half = Math.floor(max / 2);
-
-	// 	// Why am i doing this for every point? why am i applying loop for every point as points are selectedd from outside
-	// 	for (let i = 0; i < max; i++) {
-	// 		// Calculate Gaussian function for each position
-	// 		// console.log("di", distance)
-
-	// 		// console.log("ga", gaussianValue);
-	// 		// // f(x)=e ^ -((x - mean)^2/2.sd^2)
-	// 		const gaussianValue = Math.exp(
-	// 			-(Math.pow(i / max - half, 2) / (2 * Math.pow(standardDeviation * half, 2)))
-	// 		);
-
-	// 		// Determine width based on the Gaussian value
-	// 		const widthFactor = Math.floor(gaussianValue * curveWidth);
-
-	// 		// Store in the object
-	// 		objForNeighbours[i] = widthFactor;
-	// 	}
-	// 	currentMax = max;
-	// }
-	// console.log("obj", objForNeighbours);
-
-	// const result = Object.entries(objForNeighbours).filter(([key, val]) => key == count)[0][1];
-
-	// for (let i = -result; i <= result; i++) {
-	// 	for (let j = -result; j <= result; j++) {
-	// 		for (let k = -result; k <= result; k++) {
-	// 			const newX = x + i;
-	// 			const newY = y + j;
-	// 			const newZ = z + k;
-
-	// 			// Check if the new coordinates are within the dimensions of volumetricDataset
-	// 			if (newX >= 0 && newX < width && newY >= 0 && newY < height && newZ >= 0 && newZ < depth) {
-	// 				volumetricDataset[newX][newY][newZ] = value;
-	// 			}
-	// 		}
-	// 	}
-	// }
-
-	// =====================
 
 	// console.log("count", count, scaledThicknessArr);
 	const result = scaledThicknessArr[count];
@@ -169,14 +108,6 @@ const setVoxelAndNeighbors = (x, y, z, value, count, max) => {
 			}
 		}
 	}
-	// }
-	// else {
-	// 	if (x >= 0 && x < width && y >= 0 && y < height && z >= 0 && z < depth) {
-	// 		volumetricDataset[x][y][z] = value;
-	// 	}
-	// }
-
-	// console.log("sca", scaledThicknessArr);
 };
 
 findingGaussianArray(num_field[j]);
@@ -230,17 +161,46 @@ for (let i = 0; i < threeDimArr[0].length; i++) {
 }
 console.log("onj", obj);
 
+// function flatten(arr) {
+// 	return arr.reduce((prev, curr) => {
+// 		return prev.concat(Array.isArray(curr) ? flatten(curr) : curr);
+// 	}, []);
+// }
+
 // Flatten the 3D array into a 1D array
-const flattenedData = volumetricDataset.flat(2);
+// const flattenedData = flatten(volumetricDataset);
+// const flattenedData = volumetricDataset.flat(2);
+// console.log("fla", flattenedData.length);
 
-// Convert array of values to Uint8Array
-const uint8Array = new Uint8Array(flattenedData);
+// // Convert array of values to Uint8Array
+// const uint8Array = new Uint8Array(flattenedData);
 
-// Write the Uint8Array to a file
-fs.writeFileSync("volume.byte", Buffer.from(uint8Array));
+// // Write the Uint8Array to a file
+// fs.writeFileSync("volume.byte", Buffer.from(uint8Array));
 
-console.log('File "volume.byte" created successfully.');
+// console.log('File "volume.byte" created successfully.');
 
 // ================
 
 // ==============================
+
+// Function to flatten and write data to file
+const flattenAndWriteToFile = (data, filename, append = false) => {
+	const flattenedData = data.flat(2);
+	console.log("adsf", flattenedData.length);
+	const uint8Array = new Uint8Array(flattenedData);
+	const flag = append ? "a" : "w";
+	fs.writeFileSync(filename, Buffer.from(uint8Array), { flag }); // 'a' flag appends to the file
+	console.log(`Data ${append ? "appended" : "created"} to file "${filename}" successfully.`);
+};
+
+// Assuming half of the volumetricDataset
+const firstHalf = volumetricDataset.slice(0, Math.ceil(volumetricDataset.length / 2));
+// Flatten and write the first half
+flattenAndWriteToFile(firstHalf, "volume.byte");
+
+// Assuming the remaining volumetricDataset
+const secondHalf = volumetricDataset.slice(Math.ceil(volumetricDataset.length / 2));
+
+// Flatten and append the second half
+flattenAndWriteToFile(secondHalf, "volume.byte", true);
