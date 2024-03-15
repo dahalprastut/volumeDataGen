@@ -1,13 +1,16 @@
 const fs = require("fs");
 
+// record start time
+const startTime = performance.now();
+
 // Read the JSON file
 const jsonData = fs.readFileSync("field_lines4.json", "utf-8");
 
 // Parse the JSON data
 const threeDimArr = JSON.parse(jsonData);
-const highestValue = 511;
-const middleValue = 400;
-const lowestValue = 300;
+const highestValue = 255;
+const middleValue = 140;
+const lowestValue = 90;
 
 const num_field = threeDimArr[4];
 
@@ -15,20 +18,19 @@ const height = 512;
 const width = 512;
 const depth = 512;
 
-const curveWidth = 10;
+const curveWidth = 15;
 
 const filteredNums = num_field.filter((num) => num !== 0);
 
 // Find the highest, lowest (excluding 0), and middle values
 // This is done to set a limit to what might be the highest, lowest and middle values
-// const highest = Math.max(...filteredNums);
 // const highest = filteredNums.sort((a, b) => a - b)[filteredNums.length - 28];
-const highest = filteredNums.sort((a, b) => a - b)[filteredNums.length - 5];
+const highest = filteredNums.sort((a, b) => a - b)[filteredNums.length - 1];
 
 // const lowest = Math.min(...filteredNums);
-const lowest = filteredNums.sort((a, b) => a - b)[10];
+const lowest = filteredNums.sort((a, b) => a - b)[0];
 // const middle = filteredNums.sort((a, b) => a - b)[Math.floor(filteredNums.length / 2) - 10];
-const middle = filteredNums.sort((a, b) => a - b)[Math.floor(filteredNums.length) - 20];
+const middle = filteredNums.sort((a, b) => a - b)[Math.floor(filteredNums.length) - 2];
 
 const volumetricDataset = new Array(width)
 	.fill(0)
@@ -45,8 +47,6 @@ const obj = {
 	lowest: 0,
 };
 
-let currentMax = Infinity;
-let objForNeighbours;
 let scaledThicknessArr = [];
 const findingGaussianArray = (max) => {
 	scaledThicknessArr = [];
@@ -62,8 +62,6 @@ const findingGaussianArray = (max) => {
 	const step = (end - start) / totalNumberOfPoints;
 
 	for (let i = 0; i <= totalNumberOfPoints; i++) {
-		// const coefficient = 1 / (standardDeviation * Math.sqrt(2 * Math.PI));
-		// const exponent = -((xval - mean) ** 2) / (2 * standardDeviation ** 2);
 		const thicknessValue =
 			(1 / (standardDeviation * Math.sqrt(2 * Math.PI))) *
 			Math.exp(-((xval - mean) ** 2) / (2 * standardDeviation ** 2));
@@ -161,16 +159,7 @@ for (let i = 0; i < threeDimArr[0].length; i++) {
 }
 console.log("onj", obj);
 
-// function flatten(arr) {
-// 	return arr.reduce((prev, curr) => {
-// 		return prev.concat(Array.isArray(curr) ? flatten(curr) : curr);
-// 	}, []);
-// }
-
-// Flatten the 3D array into a 1D array
-// const flattenedData = flatten(volumetricDataset);
 // const flattenedData = volumetricDataset.flat(2);
-// console.log("fla", flattenedData.length);
 
 // // Convert array of values to Uint8Array
 // const uint8Array = new Uint8Array(flattenedData);
@@ -178,20 +167,20 @@ console.log("onj", obj);
 // // Write the Uint8Array to a file
 // fs.writeFileSync("volume.byte", Buffer.from(uint8Array));
 
-// console.log('File "volume.byte" created successfully.');
-
-// ================
-
 // ==============================
 
 // Function to flatten and write data to file
 const flattenAndWriteToFile = (data, filename, append = false) => {
 	const flattenedData = data.flat(2);
-	console.log("adsf", flattenedData.length);
 	const uint8Array = new Uint8Array(flattenedData);
 	const flag = append ? "a" : "w";
 	fs.writeFileSync(filename, Buffer.from(uint8Array), { flag }); // 'a' flag appends to the file
 	console.log(`Data ${append ? "appended" : "created"} to file "${filename}" successfully.`);
+	if (append) {
+		const endTime = performance.now();
+		const timeInSeconds = (endTime - startTime) / 1000;
+		console.log("time taken = ", timeInSeconds);
+	}
 };
 
 // Assuming half of the volumetricDataset
