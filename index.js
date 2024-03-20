@@ -125,6 +125,7 @@ const getTheGaussianIntenstity = (width, highestIntensity, lowestIntensity) => {
 
 // Function to set the value for a given voxel and its neighbors
 let memoizedResult = [];
+
 const setVoxelAndNeighbors = (x, y, z, count, highestIntensity, lowestIntensity) => {
 	const result = scaledThicknessArr[count]; //Stores the width of each point
 	if (memoizedResult.find((el) => el[result]) === undefined) {
@@ -145,7 +146,16 @@ const setVoxelAndNeighbors = (x, y, z, count, highestIntensity, lowestIntensity)
 
 				// Check if the new coordinates are within the dimensions of volumetricDataset
 				//Do this only if the result changes or store the result using length as it is like a parabola
-				if (newX >= 0 && newX < width && newY >= 0 && newY < height && newZ >= 0 && newZ < depth) {
+				if (
+					newX >= 0 &&
+					newX < width &&
+					newY >= 0 &&
+					newY < height &&
+					newZ >= 0 &&
+					newZ < depth &&
+					// Check for this case more as it might impact gaussian curve.
+					volumetricDataset[newX][newY][newZ] !== highestIntensity // when newX,newY and newZ is created it might affect previous data
+				) {
 					// do The gaussian calculation again or see from the memoized data
 					const getMaxOfVoxels = Math.max(Math.abs(i), Math.abs(j), Math.abs(k));
 					// When getMaxOfVoxels is 0, it means that the line is the central line which should have highest intensity
@@ -156,7 +166,9 @@ const setVoxelAndNeighbors = (x, y, z, count, highestIntensity, lowestIntensity)
 
 					const calculateIndex = getMaxOfVoxels == 0 ? result : result + getMaxOfVoxels;
 					const getValue = getCorrectWidthArray[calculateIndex];
-					console.log("ge", getCorrectWidthArray);
+					// console.log("ge", getValue);
+					// console.log("volumetricDataset[newX][newY][newZ]", volumetricDataset[newX][newY][newZ]);
+
 					volumetricDataset[newX][newY][newZ] = getValue;
 				}
 			}
@@ -206,7 +218,7 @@ for (let i = 0; i < threeDimArr[0].length; i++) {
 		if (valueToSet === highestValue) {
 			// To have the highest value of bigger width
 			// This might be changed if every values must have the same width
-			setVoxelAndNeighbors(x, y, z, count, valueToSet, 90); // Change this argument for dynamism
+			setVoxelAndNeighbors(x, y, z, count, valueToSet, 100); // Change this argument for dynamism
 		} else {
 			volumetricDataset[x][y][z] = valueToSet;
 		}
@@ -226,8 +238,12 @@ console.log("onj", obj);
 // ==============================
 
 // Function to flatten and write data to file
+// let total = 0;
 const flattenAndWriteToFile = (data, filename, append = false) => {
 	const flattenedData = data.flat(2);
+	// const numberOf255Values = flattenedData.filter((value) => value == 255).length;
+	// console.log("nu", numberOf255Values);
+	// total = total + numberOf255Values;
 	const uint8Array = new Uint8Array(flattenedData);
 	const flag = append ? "a" : "w";
 	fs.writeFileSync(filename, Buffer.from(uint8Array), { flag }); // 'a' flag appends to the file
@@ -236,6 +252,7 @@ const flattenAndWriteToFile = (data, filename, append = false) => {
 		const endTime = performance.now();
 		const timeInSeconds = (endTime - startTime) / 1000;
 		console.log("time taken = ", timeInSeconds);
+		// console.log("ta", total);
 	}
 };
 
