@@ -108,12 +108,12 @@ const getTheGaussianIntenstity = (width, highestIntensity, lowestIntensity) => {
 	const minIntensity = Math.min(...intensityArr);
 
 	// Calculate the scaling factor to map intensity values from 0 to 128 (for half the range)
-	const scalingFactor = 128 / (maxIntensity - minIntensity);
+	const scalingFactor = (highestIntensity - lowestIntensity) / (maxIntensity - minIntensity);
 
 	// Scale the intensity values based on the maximum intensity
 	for (let value of intensityArr) {
 		// Scale each value linearly to the range [127, 255]
-		const scaledValue = 127 + (value - minIntensity) * scalingFactor; // Adjusted scaling
+		const scaledValue = lowestIntensity + (value - minIntensity) * scalingFactor; // Adjusted scaling
 		scaledIntensityArr.push(Math.round(scaledValue)); // Round to nearest integer
 	}
 
@@ -134,7 +134,6 @@ const setVoxelAndNeighbors = (x, y, z, count, highestIntensity, lowestIntensity)
 		// This is done as we can only see one plane in the screen which is 2D at one time and since the width has been incremented in all 3 directions
 		// We can only see in 2 plane at one time in 2D. Hence, *2.
 		getTheGaussianIntenstity(result, highestIntensity, lowestIntensity);
-		// console.log("mem", memoizedResult);
 	}
 	const getCorrectWidthArray = memoizedResult.find((el) => el[result])[result];
 	for (let i = -result; i <= result; i++) {
@@ -155,10 +154,9 @@ const setVoxelAndNeighbors = (x, y, z, count, highestIntensity, lowestIntensity)
 					// So we have taken max of i, j and k which means the furthest it is in all dimention
 					// if [2,3,5] is the i,j,k then we know that we are talking about a value which is 5 points away in z direction which will have mid value + 5 intensity as a whole.
 
-					// const getCorrectWidthArray = [127, 197, 255, 197, 127];
 					const calculateIndex = getMaxOfVoxels == 0 ? result : result + getMaxOfVoxels;
 					const getValue = getCorrectWidthArray[calculateIndex];
-					// console.log("ge", getCorrectWidthArray);
+					console.log("ge", getCorrectWidthArray);
 					volumetricDataset[newX][newY][newZ] = getValue;
 				}
 			}
@@ -208,7 +206,7 @@ for (let i = 0; i < threeDimArr[0].length; i++) {
 		if (valueToSet === highestValue) {
 			// To have the highest value of bigger width
 			// This might be changed if every values must have the same width
-			setVoxelAndNeighbors(x, y, z, count, valueToSet, 127); // Change this argument for dynamism
+			setVoxelAndNeighbors(x, y, z, count, valueToSet, 90); // Change this argument for dynamism
 		} else {
 			volumetricDataset[x][y][z] = valueToSet;
 		}
