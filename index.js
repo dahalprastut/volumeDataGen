@@ -136,6 +136,7 @@ const setVoxelAndNeighbors = (x, y, z, count, highestIntensity, lowestIntensity)
 		getTheGaussianIntenstity(result, highestIntensity, lowestIntensity);
 		// console.log("mem", memoizedResult);
 	}
+	const getCorrectWidthArray = memoizedResult.find((el) => el[result])[result];
 	for (let i = -result; i <= result; i++) {
 		for (let j = -result; j <= result; j++) {
 			for (let k = -result; k <= result; k++) {
@@ -153,7 +154,8 @@ const setVoxelAndNeighbors = (x, y, z, count, highestIntensity, lowestIntensity)
 					// The middle points are for highest intensity and the edges are for lower intensity (following Gaussian)
 					// So we have taken max of i, j and k which means the furthest it is in all dimention
 					// if [2,3,5] is the i,j,k then we know that we are talking about a value which is 5 points away in z direction which will have mid value + 5 intensity as a whole.
-					const getCorrectWidthArray = memoizedResult.find((el) => el[result])[result];
+
+					// const getCorrectWidthArray = [127, 197, 255, 197, 127];
 					const calculateIndex = getMaxOfVoxels == 0 ? result : result + getMaxOfVoxels;
 					const getValue = getCorrectWidthArray[calculateIndex];
 					// console.log("ge", getCorrectWidthArray);
