@@ -18,7 +18,7 @@ const height = 512;
 const width = 512;
 const depth = 512;
 
-const curveWidth = 15;
+const curveWidth = 22;
 
 const filteredNums = num_field.filter((num) => num !== 0);
 
@@ -48,6 +48,8 @@ const obj = {
 };
 
 let scaledThicknessArr = [];
+
+// Function to find the width of each point
 const findingGaussianArray = (max) => {
 	scaledThicknessArr = [];
 	const start = -2;
@@ -55,7 +57,7 @@ const findingGaussianArray = (max) => {
 	const mean = 0;
 	const totalNumberOfPoints = max;
 	const thicknessArr = [];
-	const standardDeviation = 0.5;
+	const standardDeviation = 0.8;
 
 	let xval = start;
 
@@ -77,21 +79,54 @@ const findingGaussianArray = (max) => {
 	return scaledThicknessArr;
 };
 
-const resultArray = findingGaussianArray(num_field[0]);
+let scaledIntensityArr = [];
+// Function to get the intensity of each point
+const getTheGaussianIntenstity = (width, highestIntensity, lowestIntensity) => {
+	scaledIntensityArr = [];
+	const start = -2;
+	const end = 2;
+	const mean = 0;
+	const totalNumberOfPoints = width * 2;
+	const intensityArr = [];
+	const standardDeviation = 1;
 
-// Convert the array to a comma-separated string
-const resultString = resultArray.join("\n");
+	let xval = start;
 
-fs.writeFileSync("output.txt", resultString);
+	const step = (end - start) / totalNumberOfPoints;
+
+	for (let i = 0; i <= totalNumberOfPoints; i++) {
+		const thicknessValue =
+			(1 / (standardDeviation * Math.sqrt(2 * Math.PI))) *
+			Math.exp(-((xval - mean) ** 2) / (2 * standardDeviation ** 2));
+		intensityArr.push(thicknessValue);
+		xval += step;
+	}
+
+	const maxIntensity = Math.max(...intensityArr);
+	// Scale the Intensity values based on the maximum Intensity
+	// const scalingFactor = highestIntensity / maxIntensity;
+	// Calculate scaling factor to map intensity values from 0 to 255
+	const scalingFactor = highestIntensity - lowestIntensity;
+
+	// Scale the intensity values based on the maximum intensity
+	scaledIntensityArr = intensityArr.map((value) => {
+		// Map intensity values from 0 to 1
+		const normalizedIntensity = value / maxIntensity;
+		// Scale intensity values from 0 to 1 to the desired range (127 to 255)
+		const scaledIntensity = lowestIntensity + scalingFactor * normalizedIntensity;
+		return Math.ceil(scaledIntensity);
+	});
+	let obj = {};
+	obj[`${width}`] = scaledIntensityArr;
+	memoizedResult.push(obj);
+	// console.log("sca", scaledIntensityArr);
+};
 
 // Function to set the value for a given voxel and its neighbors
-const setVoxelAndNeighbors = (x, y, z, value, count, max) => {
-	let half;
+let memoizedResult = [];
+const setVoxelAndNeighbors = (x, y, z, count, highestIntensity, lowestIntensity) => {
+	const result = scaledThicknessArr[count]; //Stores the width of each point
 
-	// console.log("count", count, scaledThicknessArr);
-	const result = scaledThicknessArr[count];
-
-	// if (result !== 1) {
 	for (let i = -result; i <= result; i++) {
 		for (let j = -result; j <= result; j++) {
 			for (let k = -result; k <= result; k++) {
@@ -100,8 +135,29 @@ const setVoxelAndNeighbors = (x, y, z, value, count, max) => {
 				const newZ = z + k;
 
 				// Check if the new coordinates are within the dimensions of volumetricDataset
+				//Do this only if the result changes or store the result using length as it is like a parabola
+				if (memoizedResult.find((el) => el[result]) === undefined) {
+					// Here I have calculated the intensity based on the number of points
+					// Since the width is for looped in all 3 dimentions, the width is increased which still follows the gaussian pattern
+					// So for calculating the intensity I have also multiplied the number of points by 2 inside the function
+					// This is done as we can only see one plane in the screen which is 2D at one time and since the width has been incremented in all 3 directions
+					// We can only see in 2 plane at one time in 2D. Hence, *2.
+					getTheGaussianIntenstity(result, highestIntensity, lowestIntensity);
+					// console.log("mem", memoizedResult);
+				}
 				if (newX >= 0 && newX < width && newY >= 0 && newY < height && newZ >= 0 && newZ < depth) {
-					volumetricDataset[newX][newY][newZ] = value;
+					// do The gaussian calculation again or see from the memoized data
+					const getMaxOfVoxels = Math.max(Math.abs(i), Math.abs(j), Math.abs(k));
+					// When getMaxOfVoxels is 0, it means that the line is the central line which should have highest intensity
+					// The concept is for x width, I will have 2*x + 1 number of points in 2D ( which is shown in the screen)
+					// The middle points are for highest intensity and the edges are for lower intensity (following Gaussian)
+					// So we have taken max of i, j and k which means the furthest it is in all dimention
+					// if [2,3,5] is the i,j,k then we know that we are talking about a value which is 5 points away in z direction which will have mid value + 5 intensity as a whole.
+					const getCorrectWidthArray = memoizedResult.find((el) => el[result])[result];
+					const calculateIndex = getMaxOfVoxels == 0 ? result : result + getMaxOfVoxels;
+					console.log("get", getCorrectWidthArray);
+					const getValue = getCorrectWidthArray[calculateIndex];
+					volumetricDataset[newX][newY][newZ] = getValue;
 				}
 			}
 		}
@@ -150,7 +206,7 @@ for (let i = 0; i < threeDimArr[0].length; i++) {
 		if (valueToSet === highestValue) {
 			// To have the highest value of bigger width
 			// This might be changed if every values must have the same width
-			setVoxelAndNeighbors(x, y, z, valueToSet, count, initial_max);
+			setVoxelAndNeighbors(x, y, z, count, valueToSet, 127); // Change this argument for dynamism
 		} else {
 			volumetricDataset[x][y][z] = valueToSet;
 		}
