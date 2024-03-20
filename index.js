@@ -70,8 +70,8 @@ const findingGaussianArray = (max) => {
 		thicknessArr.push(thicknessValue);
 		xval += step;
 	}
-
 	const maxThickness = Math.max(...thicknessArr);
+
 	// Scale the thickness values based on the maximum thickness
 	const scalingFactor = curveWidth / maxThickness;
 
@@ -103,19 +103,20 @@ const getTheGaussianIntenstity = (width, highestIntensity, lowestIntensity) => {
 	}
 
 	const maxIntensity = Math.max(...intensityArr);
-	// Scale the Intensity values based on the maximum Intensity
-	// const scalingFactor = highestIntensity / maxIntensity;
-	// Calculate scaling factor to map intensity values from 0 to 255
-	const scalingFactor = highestIntensity - lowestIntensity;
+
+	// Find the minimum intensity value
+	const minIntensity = Math.min(...intensityArr);
+
+	// Calculate the scaling factor to map intensity values from 0 to 128 (for half the range)
+	const scalingFactor = 128 / (maxIntensity - minIntensity);
 
 	// Scale the intensity values based on the maximum intensity
-	scaledIntensityArr = intensityArr.map((value) => {
-		// Map intensity values from 0 to 1
-		const normalizedIntensity = value / maxIntensity;
-		// Scale intensity values from 0 to 1 to the desired range (127 to 255)
-		const scaledIntensity = lowestIntensity + scalingFactor * normalizedIntensity;
-		return Math.ceil(scaledIntensity);
-	});
+	for (let value of intensityArr) {
+		// Scale each value linearly to the range [127, 255]
+		const scaledValue = 127 + (value - minIntensity) * scalingFactor; // Adjusted scaling
+		scaledIntensityArr.push(Math.round(scaledValue)); // Round to nearest integer
+	}
+
 	let obj = {};
 	obj[`${width}`] = scaledIntensityArr;
 	memoizedResult.push(obj);
@@ -126,7 +127,15 @@ const getTheGaussianIntenstity = (width, highestIntensity, lowestIntensity) => {
 let memoizedResult = [];
 const setVoxelAndNeighbors = (x, y, z, count, highestIntensity, lowestIntensity) => {
 	const result = scaledThicknessArr[count]; //Stores the width of each point
-
+	if (memoizedResult.find((el) => el[result]) === undefined) {
+		// Here I have calculated the intensity based on the number of points
+		// Since the width is for looped in all 3 dimentions, the width is increased which still follows the gaussian pattern
+		// So for calculating the intensity I have also multiplied the number of points by 2 inside the function
+		// This is done as we can only see one plane in the screen which is 2D at one time and since the width has been incremented in all 3 directions
+		// We can only see in 2 plane at one time in 2D. Hence, *2.
+		getTheGaussianIntenstity(result, highestIntensity, lowestIntensity);
+		// console.log("mem", memoizedResult);
+	}
 	for (let i = -result; i <= result; i++) {
 		for (let j = -result; j <= result; j++) {
 			for (let k = -result; k <= result; k++) {
@@ -136,15 +145,6 @@ const setVoxelAndNeighbors = (x, y, z, count, highestIntensity, lowestIntensity)
 
 				// Check if the new coordinates are within the dimensions of volumetricDataset
 				//Do this only if the result changes or store the result using length as it is like a parabola
-				if (memoizedResult.find((el) => el[result]) === undefined) {
-					// Here I have calculated the intensity based on the number of points
-					// Since the width is for looped in all 3 dimentions, the width is increased which still follows the gaussian pattern
-					// So for calculating the intensity I have also multiplied the number of points by 2 inside the function
-					// This is done as we can only see one plane in the screen which is 2D at one time and since the width has been incremented in all 3 directions
-					// We can only see in 2 plane at one time in 2D. Hence, *2.
-					getTheGaussianIntenstity(result, highestIntensity, lowestIntensity);
-					// console.log("mem", memoizedResult);
-				}
 				if (newX >= 0 && newX < width && newY >= 0 && newY < height && newZ >= 0 && newZ < depth) {
 					// do The gaussian calculation again or see from the memoized data
 					const getMaxOfVoxels = Math.max(Math.abs(i), Math.abs(j), Math.abs(k));
@@ -155,8 +155,8 @@ const setVoxelAndNeighbors = (x, y, z, count, highestIntensity, lowestIntensity)
 					// if [2,3,5] is the i,j,k then we know that we are talking about a value which is 5 points away in z direction which will have mid value + 5 intensity as a whole.
 					const getCorrectWidthArray = memoizedResult.find((el) => el[result])[result];
 					const calculateIndex = getMaxOfVoxels == 0 ? result : result + getMaxOfVoxels;
-					console.log("get", getCorrectWidthArray);
 					const getValue = getCorrectWidthArray[calculateIndex];
+					// console.log("ge", getCorrectWidthArray);
 					volumetricDataset[newX][newY][newZ] = getValue;
 				}
 			}
